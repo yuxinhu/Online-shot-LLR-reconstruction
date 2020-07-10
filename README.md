@@ -19,6 +19,7 @@ Step 5: Transfer the DICOMs back to the scanner.
 
 Step 1 and Step 5 about transferring files are achieved with the help of [Dr. Marcus Alley](https://med.stanford.edu/profiles/marcus-alley), which may be implemented differently for different institutions and scanners. Steps 2 - 4 are provided in this example. The input is a folder containing the raw data from step 1 and the ouput is another folder containing the generated DICOMs for step 5.
 
-### To be improved:
+### To be improved
 (1) Parallel computing to accelerate the reconstruction.
+
 (2) Orchestra and BART may be updated.
