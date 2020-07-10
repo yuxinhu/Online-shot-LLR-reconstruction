@@ -1,8 +1,22 @@
-# shot-LLR-on-GE-s-scanners
 
-Here we show one example of making your own reconstruction running online (right after the data collection) and putting images back to the scanner. The whole pipeline is as following, 
-1) extract all required files (pfiles, scanArchives)to our own server,
-2) use Orchestra to load the raw data, and apply some post-correction (ramp sampling correction and EPI odd-even correction in this example)
-3) do your own reconstruction (shot-LLR for multi-shot DWI reconstruction in this example)
-4) load the reconstructed images in Orchestra and call function "" to generate DICOMs 
-5) put DICOMs back to the scanner.
+[Shot-LLR](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.27488) is a multi-shot diffusion-weighted MRI reconstruction method. Here we provide one example about how to make it run online on GE MRI scanners at [our institution (Lucas center, Stanford University)](https://med.stanford.edu/rsl/about/lucas.html).
+
+### Pipeline
+There are five steps from the raw data to the DICOM image on the scanner as below.
+Step 1: Transfer the files (data and the acquisition information) from the scanner to the reconstruction server (since usually “fancy” reconstructions are computationally expensive and needs to run on some powerful servers). 
+
+Step 2: Read the file and get the raw k-space data. We are using GE's Orchestar (can be found [here](https://collaborate.mr.gehealthcare.com/welcome
+)) in this example, which also provide Nyquist artifact correction and ramp sampling correction. Some modifications are needed to make Orchestra output the k-space data, and we provide one way to do this [here]().
+
+Step 3: shot-LLR reconstruction. This is written in Python and mainly based on [BART](https://mrirecon.github.io/bart/). Homodyne reconstruction is applied after shot-LLR reconstruction if Partial Fourier acquisition is used.
+
+Spte 4: Generate DICOMs. Again, we use Orchestra in this step to make sure the header information is correct.
+
+Step 5: Transfer the DICOMs back to the scanner.
+
+
+Step 1 and Step 5 about transferring files are achieved with the help of [Dr. Marcus Alley](https://med.stanford.edu/profiles/marcus-alley), which may be implemented differently for different institutions and scanners. Steps 2 - 4 are provided in this example. The input is a folder containing the raw data from step 1 and the ouput is another folder containing the generated DICOMs for step 5.
+
+### To be improved:
+(1) Parallel computing to accelerate the reconstruction.
+(2) Orchestra and BART may be updated.
