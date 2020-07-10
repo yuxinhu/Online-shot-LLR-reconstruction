@@ -3,6 +3,7 @@
 
 ### Pipeline
 There are five steps from the raw data to the DICOM image on the scanner as below.
+
 Step 1: Transfer the files (data and the acquisition information) from the scanner to the reconstruction server (since usually “fancy” reconstructions are computationally expensive and needs to run on some powerful servers). 
 
 Step 2: Read the file and get the raw k-space data. We are using GE's Orchestra (can be found [here](https://collaborate.mr.gehealthcare.com/welcome
