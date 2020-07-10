@@ -1,7 +1,8 @@
+# Online shot-LLR reconstruction (including data reading and DICOM generation)
 
 [Shot-LLR](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.27488) is a multi-shot diffusion-weighted MRI reconstruction method. Here we provide one example about how to make it run online on GE MRI scanners at [our institution (Lucas center, Stanford University)](https://med.stanford.edu/rsl/about/lucas.html).
 
-### Pipeline
+## Pipeline
 There are five steps from the raw data to the DICOM image on the scanner as below.
 
 Step 1: Transfer the files (data and the acquisition information) from the scanner to the reconstruction server (since usually “fancy” reconstructions are computationally expensive and needs to run on some powerful servers). 
