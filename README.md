@@ -8,9 +8,9 @@ There are five steps from the raw data to the DICOM image on the scanner as belo
 Step 1: Transfer the files (data and the acquisition information) from the scanner to the reconstruction server (since usually “fancy” reconstructions are computationally expensive and needs to run on some powerful servers). 
 
 Step 2: Read the file and get the raw k-space data. We are using GE's Orchestra (can be found [here](https://collaborate.mr.gehealthcare.com/welcome
-)) in this example, which also provide Nyquist artifact correction and ramp sampling correction. Some modifications are needed to make Orchestra output the k-space data, and we provide one way to do this [here]().
+)) in this example, which also provide Nyquist artifact correction and ramp sampling correction. Some modifications are needed to make Orchestra output the k-space data, and we provide one way to do this [here](). We are using cfl format from [BART](https://mrirecon.github.io/bart/) to save the data.
 
-Step 3: shot-LLR reconstruction. This is written in Python and mainly based on [BART](https://mrirecon.github.io/bart/). Homodyne reconstruction is applied after shot-LLR reconstruction if Partial Fourier acquisition is used.
+Step 3: Shot-LLR reconstruction. We are doing this slice-by-slice. For each slcie, we calculate the sensitivity map first, and then apply shot-LLR for each nex/average/repetition. This is written in Python and the reconstruction is mainly based on [BART](https://mrirecon.github.io/bart/). Homodyne reconstruction is applied after shot-LLR reconstruction if Partial Fourier acquisition is used.
 
 Spte 4: Generate DICOMs. Again, we use Orchestra in this step to make sure the header information is correct.
 
