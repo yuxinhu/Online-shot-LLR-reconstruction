@@ -3,7 +3,7 @@
 [Shot-LLR](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.27488) is a multi-shot diffusion-weighted MRI reconstruction method. Here we provide one example about how to make it run online on GE MRI scanners at [our institution (Lucas center, Stanford University)](https://med.stanford.edu/rsl/about/lucas.html).
 
 ## Usage
-"sllr" is an excutable python file, which you can put some command like the following in the Terminal:
+Compressed EpiRehearsal.zip first (too big for Github). You probably need to recompile BART and Orchestra on your machine. "sllr" is an excutable python file. You can put some command like the following in the Terminal to run it:
 
         /sllr -p RAW_DATA_PATH -d OUTPUT_PATH
         
