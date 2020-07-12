@@ -10,7 +10,7 @@ Step 1: Transfer the files (data and the acquisition information) from the scann
 Step 2: Read the file and get the raw k-space data. We are using GE's Orchestra (can be found [here](https://collaborate.mr.gehealthcare.com/welcome
 )) (SDK 1.9-1) in this example, which also provide Nyquist artifact correction and ramp sampling correction. Some modifications are needed to make Orchestra output the k-space data, and we provide one way to do this [here](). We are using cfl format from [BART](https://mrirecon.github.io/bart/) to save the data.
 
-Step 3: Shot-LLR reconstruction. We are doing this slice-by-slice. For each slcie, we calculate the sensitivity map first, and then apply shot-LLR for each nex/average/repetition. This is written in Python and the reconstruction is mainly based on [BART](https://mrirecon.github.io/bart/) (version 0.4.03). Homodyne reconstruction is applied after shot-LLR reconstruction if Partial Fourier acquisition is used.
+Step 3: Shot-LLR reconstruction. We are doing this slice-by-slice. For each slcie, we calculate the sensitivity map first, and then apply shot-LLR for each nex/average/repetition. This is written in Python and the reconstruction is mainly based on [BART](https://mrirecon.github.io/bart/) (version 0.4.03). Homodyne reconstruction is applied after shot-LLR reconstruction if Partial Fourier acquisition is used. Detailed comments in recon.py.
 
 Spte 4: Generate DICOMs. Again, we use Orchestra in this step to make sure the header information is correct.
 
