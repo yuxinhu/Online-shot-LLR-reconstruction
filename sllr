@@ -1,0 +1,171 @@
+#!/usr/bin/env python
+
+import subprocess as sp
+import tempfile as tmp
+import numpy as np
+import os
+import cfl
+from scipy.misc import imresize
+import getopt,sys
+import recon
+import os, dicom, random
+
+# This file and the recon.py file file are saved at multiple places for different scanners:
+#    alfa for LPCH: /lpchNAS/scratch/bin/yuxinh
+#    pinin for others: /hospNAS/scratch/bin/yuxinh
+#    como1 for 3t2 and 3t3: /usr/local/recon/yuxinh
+# The scripts may be slightly different. This version is from como1, and I try to make the code organized in this version to make
+# it eaiser for the readers.
+
+def findpath(filepath): 
+    # Given the input folder, this function finds the Pfile and ScanArchive file names (with paths).
+    # It is based on that (1) the Pfile (ending with '.7') should have the largest/latest index, and 
+    # (2) the ScanArchive file (starting with 'ScanArchive') should be the largest file.
+    maxsize = 0;
+    Pindex = 999999.0;
+    Pfile, Archive = None, None
+    for file in os.listdir(filepath):
+        if file.startswith("ScanArchive"):
+            # using file size
+            # or using getctime
+            temp = os.path.join(filepath, file)
+            if os.path.getsize(temp) > maxsize:
+                maxsize = os.path.getsize(temp)
+                Archive = temp
+        if file.endswith(".7"):
+            temp = float(file.split('P')[1])
+            if temp < Pindex:
+                Pindex = temp;
+                Pfile = os.path.join(filepath, file)
+    return Pfile,Archive
+    
+def usage():
+    print('main.py -p <inputfilepath> -d <dicompath> -o <oxpath> -b <bartpath> -i <iteration> -r <lambda> -t <saveResult> -l <use l1>')
+
+
+def main(argv):
+    # Given the path, this function first finds the Pfile and ScanArchive file to be loaded. Because GE Orchestra (SDK 1.9-1) can not read multi-shot DWI 
+    # data from scanArchive, we need to use Pfile. While loading Pfile needs "vrgf" and "ref" files for ramp sampling correction and EPI phase correction 
+    # and these files, though saved but may be downloaded incorrectly, this functions will extract "vrgf" and "ref" files from scanArchive files first (step 1), and 
+    # then usus these files to correct the k-space data loaded from Pfile (step 2). The kspace data is saved into a folder called "cfls" under the same path Pfile
+    # is saved in the format of cfl (from BART). Each slice and nex is saved into one separate file, please refer to our modified Orchestra for details.
+    # Then we call reconstruction function in recon.py to do the shot-LLR reconstruction (also with homodyne) (step 3). Then we use Orchestra to generate DICOMs 
+    # based on the reconstruction results (step 4). Since we do not know exactly how the images are scaled in Orchestra, there might be an overflow problem, a
+    # while-loop is used: if overflow is deteced, divide the results by ten and redo the DICOM generation.
+
+    try:
+        opts, args = getopt.getopt(argv,"hp:d:o:b:i:r:t:l:",['help',"input=","output=","oxpath=","bartpath=","iteration=","lambda=","test=", "l1_lambda="])
+    except getopt.GetoptError:
+        usage()
+        return 1
+        #sys.exit(2)
+    
+    Dicomtogo = "/local/core/bin/yuxinh"   # The folder where DICOM should be saved into.
+
+    Bartpath = sys.path[0] # The path where the compiled BART is.
+    Oxpath = sys.path[0] # The path where the compiled Orchestra is.
+    itera = 100 # Number of iterations for shot-LLR reconstruction.
+    lam = 0.002 # Regularization parameter for the locally low-rank term
+    saveRes = 0 # whether (1) or not (0) to save the temporary results for debugging. 
+    l1_lambda = 0.0; # whether (1) or not (0) to add an additional L1 constraint. Usually not.
+    for opt, arg in opts:
+        if opt in ('-h', '--help'):
+            usage()
+            return 1
+        elif opt in ('-p', '--input'):
+            filepath = arg
+        elif opt in ('-d', '--output'):
+            Dicomtogo = arg
+        elif opt in ('-o', '--oxpath'):
+            Oxpath = arg
+        elif opt in ('-b', '--bartpath'):
+            Bartpath = arg
+        elif opt in ('-i', '--iteration'):
+            itera = int(arg)
+        elif opt in ('-r', '--lambda'):
+            lam = float(arg)
+        elif opt in ('-t', '--test'):
+            saveRes = int(arg) 
+        elif opt in ('-l', '--l1_lambda'):
+	        l1_lambda = float(arg)
+        else:
+            usage()
+            return 1
+            #sys.exit(2)
+
+
+    Pfile,Archive = findpath(filepath) 
+
+
+    if not os.path.exists(filepath + '/cfls'):
+        # Step 1: Extract sensitivity maps from scanArchives and generate vrgf.dat and ref.h5 from ScanArchive
+        print([Oxpath + '/EpiRehearsal' + ' ' + '--file' + ' ' + Archive])
+        ERR = os.system(Oxpath + '/EpiRehearsal' + ' ' + '--file' + ' ' + Archive)
+        if ERR: 
+            raise Exception('Error when getting sensitivity map')
+
+        # Step 2: Read k-space data from Pfile
+        print([Oxpath + '/EpiRehearsal' + ' ' + '--pfile' + ' ' + Pfile])
+        ERR = os.system(Oxpath + '/EpiRehearsal' + ' ' + '--pfile' + ' ' + Pfile)
+        if ERR: 
+            raise Exception('Error when loading pfile')
+
+    if not os.path.isdir(Dicomtogo):
+        os.system('mkdir ' + Dicomtogo)
+
+    # Step 3: shot-LLR reconstruction for slices and averages (maybe also with homodyne)
+    recon.llr23(Bartpath, filepath, itera, lam, saveRes, l1_lambda)
+
+    # Step 4: DICOM generation with Orchestra, a while-loop to avoid overflow.
+    while 1:
+        os.system('rm -rf ' + filepath + '/dicomImages') # Clean the previous generated DICOMs (if there is).
+
+        outOfRange_flag = 0
+        ERR = os.system(Oxpath + '/EpiRehearsal' + ' ' + '--file' + ' ' + Archive) 
+        # DICOM generation. Again, I would suggest to read our modified Orchestra page about how this is achieved if this is interested.
+
+        if ERR: 
+            raise Exception('Error when writing DICOMs')
+        randomIndex = random.randint(1,10000) # this random index is used in the file name to avoid potential overwrite (multiple users on the scanner).
+
+        a = 0.0
+        for file in os.listdir(filepath + '/dicomImages/'):
+        # Loop over all DICOM files
+            if file.endswith(".dcm"):
+                a = dicom.read_file(filepath + '/dicomImages/' + file)
+                if a.pixel_array.max() == 32767:
+                    os.system('rm -rf ' + filepath + '/dicomImages') 
+                    os.system('mkdir ' + filepath + '/dicomImages')
+                    res = cfl.readcfl(filepath +"/cfls/res")
+                    cfl.writecfl(filepath + "/cfls/res",res/10.0)
+                    outOfRange_flag = 1 
+                    break # If overflow detected, redo the while loop from the begining.
+
+                if a.SeriesDescription[0:15] == 'NOT DIAGNOSTIC:':
+                    a.SeriesDescription = 'LLR: ' + a.SeriesDescription[16:]  # This line changes the DICOM description
+                    a.SeriesNumber = a.SeriesNumber + 3 # This changes the series number. It is important to make sure the DICOMs from this script 
+                    # will not overwritte the DICOMs from different methods. You can use whatever numbers you want.
+
+                    a.save_as(filepath + '/dicomImages/' + "I" + str(randomIndex) + file)
+                    os.remove(filepath + '/dicomImages/' + file)
+
+        if outOfRange_flag == 0:
+            print('AccessionNumber is ' + a.AccessionNumber) # This accession number maybe useful for later tracking.
+            break
+
+    print(['scp -r ' + filepath + '/dicomImages/*dcm' + ' ' + Dicomtogo])
+
+    ERR = os.system('scp -r ' + filepath + '/dicomImages/*dcm' + ' ' + Dicomtogo)
+    os.system('chmod -R 777 ' + filepath + '/cfls')
+    os.system('chmod -R 777 ' + filepath + '/dicomImages')
+    os.system('chmod -R 777 ' + filepath) 
+    return ERR
+
+
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
+
+
+
